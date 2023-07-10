@@ -1,4 +1,3 @@
-
 import os
 import tarfile
 
@@ -226,6 +225,3 @@ final_predictions = final_model.predict(X_test_prepared)
 final_mse = mean_squared_error(y_test, final_predictions)
 final_rmse = np.sqrt(final_mse)
 print(f"Final RMSE: {final_rmse}")
-apps-fileview.texmex_20230622.01_p0
-code.txt
-Displaying code.txt.
