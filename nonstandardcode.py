@@ -87,18 +87,21 @@ housing_num = housing.select_dtypes(include=[np.number])
 corr_matrix = housing_num.corr()
 print("\n", corr_matrix["median_house_value"].sort_values(ascending=False))
 
-<<<<<<< HEAD
+
 housing["rooms_per_household"] = (housing["total_rooms"] /
                                   housing["households"])
 housing["bedrooms_per_room"] = (housing["total_bedrooms"] /
                                 housing["total_rooms"])
 housing["population_per_household"] = (housing["population"] /
                                        housing["households"])
-=======
-housing["rooms_per_household"] = housing["total_rooms"] / housing["households"]
-housing["bedrooms_per_room"]=housing["total_bedrooms"]/housing["total_rooms"]
-housing["population_per_household"]=housing["population"]/housing["households"]
->>>>>>> 77b34aa5ea31920687fca35b7ceaffaed59e0b83
+
+housing["rooms_per_household"] = (housing["total_rooms"] /
+                                  housing["households"])
+housing["bedrooms_per_room"] = (housing["total_bedrooms"] /
+                                housing["total_rooms"])
+housing["population_per_household"] = (housing["population"] /
+                                       housing["households"])
+
 
 housing = strat_train_set.drop(
     "median_house_value", axis=1
@@ -114,12 +117,13 @@ imputer.fit(housing_num)
 X = imputer.transform(housing_num)
 
 housing_tr = pd.DataFrame(X, columns=housing_num.columns, index=housing.index)
-<<<<<<< HEAD
+
 housing_tr["rooms_per_household"] = (housing_tr["total_rooms"] /
                                      housing_tr["households"])
-=======
-housing_tr["rooms_per_household"]=housing_tr["total_rooms"]/housing_tr["households"]
->>>>>>> 77b34aa5ea31920687fca35b7ceaffaed59e0b83
+
+housing_tr["rooms_per_household"] = (housing_tr["total_rooms"] /
+                                     housing_tr["households"])
+
 housing_tr["bedrooms_per_room"] = (
     housing_tr["total_bedrooms"] / housing_tr["total_rooms"]
 )
@@ -128,13 +132,14 @@ housing_tr["population_per_household"] = (
 )
 
 housing_cat = housing[["ocean_proximity"]]
-<<<<<<< HEAD
+
 housing_prepared = (
     housing_tr.join(pd.get_dummies(housing_cat, drop_first=True))
 )
-=======
-housing_prepared=housing_tr.join(pd.get_dummies(housing_cat, drop_first=True))
->>>>>>> 77b34aa5ea31920687fca35b7ceaffaed59e0b83
+
+housing_prepared = (
+    housing_tr.join(pd.get_dummies(housing_cat, drop_first=True))
+)
 
 
 # Model Building
@@ -238,14 +243,14 @@ X_test_prepared["population_per_household"] = (
 )
 
 X_test_cat = X_test[["ocean_proximity"]]
-<<<<<<< HEAD
+
 X_test_prepared = (
     X_test_prepared.join(pd.get_dummies(X_test_cat, drop_first=True))
 )
-=======
-X_test_prepared=X_test_prepared.join(pd.get_dummies(X_test_cat, drop_first=True))
->>>>>>> 77b34aa5ea31920687fca35b7ceaffaed59e0b83
 
+X_test_prepared = (
+    X_test_prepared.join(pd.get_dummies(X_test_cat, drop_first=True))
+)
 
 final_predictions = final_model.predict(X_test_prepared)
 final_mse = mean_squared_error(y_test, final_predictions)
