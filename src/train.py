@@ -3,6 +3,8 @@ import os
 import pickle
 import tarfile
 
+import mlflow
+import mlflow.sklearn
 import numpy as np
 import pandas as pd
 from scipy.stats import randint
@@ -38,7 +40,7 @@ def training_data(data_path):
     imputer
 
     """
-
+    # Original code...
     housing = get_data()
     split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
     for train_index, test_index in split.split(housing, housing["income_cat"]):
@@ -58,7 +60,6 @@ def training_data(data_path):
         pd.Series:Pandas Series containing the income category proportions.
 
         """
-
         return data["income_cat"].value_counts() / len(data)
 
     train_set, test_set = train_test_split(housing, test_size=0.2, random_state=42)
@@ -70,9 +71,7 @@ def training_data(data_path):
             "Random": income_cat_proportions(test_set),
         }
     ).sort_index()
-    compare_props["Rand. %error"] = (
-        100 * compare_props["Random"] / compare_props["Overall"] - 100
-    )
+    compare_props["Rand. %error"] = 100 * compare_props["Random"] / compare_props["Overall"] - 100
     compare_props["Strat. %error"] = (
         100 * compare_props["Stratified"] / compare_props["Overall"] - 100
     )
@@ -89,9 +88,7 @@ def training_data(data_path):
     housing["rooms_per_household"] = housing["total_rooms"] / housing["households"]
     housing["bedrooms_per_room"] = housing["total_bedrooms"] / housing["total_rooms"]
     housing["population_per_household"] = housing["population"] / housing["households"]
-    housing = strat_train_set.drop(
-        "median_house_value", axis=1
-    )  # drop labels for training set
+    housing = strat_train_set.drop("median_house_value", axis=1)  # drop labels for training set
     housing_labels = strat_train_set["median_house_value"].copy()
 
     imputer = SimpleImputer(strategy="median")
@@ -102,16 +99,28 @@ def training_data(data_path):
     X = imputer.transform(housing_num)
 
     housing_tr = pd.DataFrame(X, columns=housing_num.columns, index=housing.index)
-    housing_tr["rooms_per_household"] = (
-        housing_tr["total_rooms"] / housing_tr["households"]
-    )
-    housing_tr["bedrooms_per_room"] = (
-        housing_tr["total_bedrooms"] / housing_tr["total_rooms"]
-    )
-    housing_tr["population_per_household"] = (
-        housing_tr["population"] / housing_tr["households"]
-    )
+    housing_tr["rooms_per_household"] = housing_tr["total_rooms"] / housing_tr["households"]
+    housing_tr["bedrooms_per_room"] = housing_tr["total_bedrooms"] / housing_tr["total_rooms"]
+    housing_tr["population_per_household"] = housing_tr["population"] / housing_tr["households"]
 
     housing_cat = housing[["ocean_proximity"]]
     housing_prepared = housing_tr.join(pd.get_dummies(housing_cat, drop_first=True))
-    return housing_prepared, housing_labels, strat_test_set, imputer
+    # Original code...
+
+    # Initialize MLflow
+    mlflow.set_tracking_uri("C:/Users/rishu.singh/Documents/mlflow")
+
+    mlflow.set_experiment("HousingModelTraining")
+
+    # Start MLflow run
+    with mlflow.start_run():
+        # Log parameters
+        mlflow.log_param("test_size", 0.2)
+        mlflow.log_param("random_state", 42)
+
+        # Log data source path
+        mlflow.log_param("data_path", data_path)
+
+        # Model training code
+        # Original code...
+        return housing_prepared, housing_labels, strat_test_set, imputer

@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/149c4b6070544ba9bb5f1993edbc028e/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 149c4b6070544ba9bb5f1993edbc028e
+run_name: classy-donkey-408
+run_uuid: 149c4b6070544ba9bb5f1993edbc028e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1689949297652
+status: 1
+tags: []
+user_id: rishu_singh
