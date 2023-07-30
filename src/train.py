@@ -1,126 +1,158 @@
 import argparse
+import logging
 import os
-import pickle
-import tarfile
 
+import joblib
 import mlflow
-import mlflow.sklearn
-import numpy as np
 import pandas as pd
 from scipy.stats import randint
-from six.moves import urllib
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.model_selection import (
-    GridSearchCV,
-    RandomizedSearchCV,
-    StratifiedShuffleSplit,
-    train_test_split,
-)
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.tree import DecisionTreeRegressor
 
-from ingest_data import *
+PROJECT_ROOT = "/home/rishu_singh/Desktop/Assignment_2.1/mle-training/"
 
 
-def training_data(data_path):
-    """Function to train the data of Housing.
+def train_model(model_name, dataset_path, model_folder):
+    # Load the dataset from the provided folder
+    os.chdir(PROJECT_ROOT)
+    train_df = pd.read_csv(dataset_path)
+    # test_dataset = f"{dataset_folder}/housing_test.csv"
+    # test_df = pd.read_csv(test_dataset)
 
-    Parameters
-    ----------
-    path : string
-       Path of the file to get the data is expected
+    # Split the dataset into features and labels
+    X_train = train_df.drop("median_house_value", axis=1)
+    y_train = train_df["median_house_value"]
+    # X_val = test_df.drop("median_house_value", axis=1)
+    # y_val = test_df["median_house_value"]
 
-    Returns
-    -------
-    housing_prepared
-    housing_labels
-    strat_test_set
-    imputer
-
-    """
-    # Original code...
-    housing = get_data()
-    split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    for train_index, test_index in split.split(housing, housing["income_cat"]):
-        strat_train_set = housing.loc[train_index]
-        strat_test_set = housing.loc[test_index]
-
-    def income_cat_proportions(data):
-        """Calculates the income category proportions in a given dataset.
-
-        Parameters
-        -----------
-        data : pd.DataFrame
-           Pandas DataFrame containing the dataset.
-
-        Returns
-        --------
-        pd.Series:Pandas Series containing the income category proportions.
-
-        """
-        return data["income_cat"].value_counts() / len(data)
-
-    train_set, test_set = train_test_split(housing, test_size=0.2, random_state=42)
-
-    compare_props = pd.DataFrame(
-        {
-            "Overall": income_cat_proportions(housing),
-            "Stratified": income_cat_proportions(strat_test_set),
-            "Random": income_cat_proportions(test_set),
+    # Select the model based on the provided model name
+    if model_name == "linear_regression":
+        model = LinearRegression()
+    elif model_name == "decision_tree_regressor":
+        model = DecisionTreeRegressor()
+    elif model_name == "random_forest-randomized_search":
+        param_distribs = {
+            "n_estimators": randint(low=1, high=200),
+            "max_features": randint(low=1, high=8),
         }
-    ).sort_index()
-    compare_props["Rand. %error"] = 100 * compare_props["Random"] / compare_props["Overall"] - 100
-    compare_props["Strat. %error"] = (
-        100 * compare_props["Stratified"] / compare_props["Overall"] - 100
+
+        forest_reg = RandomForestRegressor(random_state=42)
+        model = RandomizedSearchCV(
+            forest_reg,
+            param_distributions=param_distribs,
+            n_iter=10,
+            cv=5,
+            scoring="neg_mean_squared_error",
+            random_state=42,
+        )
+    elif model_name == "random_forest-grid_search":
+        param_grid = [
+            # try 12 (3×4) combinations of hyperparameters
+            {"n_estimators": [3, 10, 30], "max_features": [2, 4, 6, 8]},
+            # then try 6 (2×3) combinations with bootstrap set as False
+            {"bootstrap": [False], "n_estimators": [3, 10], "max_features": [2, 3, 4]},
+        ]
+
+        forest_reg = RandomForestRegressor(random_state=42)
+        # train across 5 folds, that's a total of (12+6)*5=90 rounds of training
+        model = GridSearchCV(
+            forest_reg,
+            param_grid,
+            cv=5,
+            scoring="neg_mean_squared_error",
+            return_train_score=True,
+        )
+    else:
+        logger.error(f"Invalid model name: {model_name}")
+        raise ValueError(f"Invalid model name: {model_name}")
+
+    # Train the selected model
+    model.fit(X_train, y_train)
+
+    # Save the trained model to the output folder
+    os.chdir(PROJECT_ROOT)
+    os.makedirs(model_folder, exist_ok=True)
+    model_path = f"{model_folder}/{model_name}.pkl"
+    logger.info(f"Created {model_name}.pkl")
+    joblib.dump(model, model_path)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "model_name",
+        help="Model name ('linear_regression'/'decision_tree_regressor'/ \
+        'random_forest-randomized_search'/'random_forest-grid_search')",
     )
+    parser.add_argument(
+        "experiment_name",
+        help="MLflow experiment name",
+    )
+    parser.add_argument(
+        "run_id",
+        help="MLflow run id",
+    )
+    parser.add_argument(
+        "--dataset_path",
+        metavar="<path>",
+        default="data/processed/housing/housing_train.csv",
+        required=False,
+        help="Input dataset folder path",
+    )
+    parser.add_argument(
+        "--model_folder",
+        metavar="<path>",
+        default="artifacts/models",
+        required=False,
+        help="Output model folder path",
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Specify the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    )
+    parser.add_argument(
+        "--log-path",
+        metavar="<path>",
+        default="logs/log.txt",
+        required=False,
+        help="Specify the log file path",
+    )
+    parser.add_argument(
+        "--no-console-log",
+        action="store_true",
+        required=False,
+        help="Toggle whether or not to write logs to the console",
+    )
+    args = parser.parse_args()
 
-    for set_ in (strat_train_set, strat_test_set):
-        set_.drop("income_cat", axis=1, inplace=True)
+    log_level = args.log_level.upper()
+    log_file = args.log_path
 
-    housing = strat_train_set.copy()
-    housing.plot(kind="scatter", x="longitude", y="latitude")
-    housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.1)
-    housing.drop("ocean_proximity", axis=1, inplace=True)
-    corr_matrix = housing.corr()
-    corr_matrix["median_house_value"].sort_values(ascending=False)
-    housing["rooms_per_household"] = housing["total_rooms"] / housing["households"]
-    housing["bedrooms_per_room"] = housing["total_bedrooms"] / housing["total_rooms"]
-    housing["population_per_household"] = housing["population"] / housing["households"]
-    housing = strat_train_set.drop("median_house_value", axis=1)  # drop labels for training set
-    housing_labels = strat_train_set["median_house_value"].copy()
+    logger = logging.getLogger(__name__)
+    logger.setLevel(log_level)
 
-    imputer = SimpleImputer(strategy="median")
+    log_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
-    housing_num = housing.drop("ocean_proximity", axis=1)
+    if log_file:
+        # Assume logs directory is in the project root
+        os.makedirs("logs", exist_ok=True)
+        file_handler = logging.FileHandler("logs/log.txt", mode="a")
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(log_formatter)
+        logger.addHandler(file_handler)
 
-    imputer.fit(housing_num)
-    X = imputer.transform(housing_num)
+    if not args.no_console_log:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)
+        console_handler.setFormatter(log_formatter)
+        logger.addHandler(console_handler)
 
-    housing_tr = pd.DataFrame(X, columns=housing_num.columns, index=housing.index)
-    housing_tr["rooms_per_household"] = housing_tr["total_rooms"] / housing_tr["households"]
-    housing_tr["bedrooms_per_room"] = housing_tr["total_bedrooms"] / housing_tr["total_rooms"]
-    housing_tr["population_per_household"] = housing_tr["population"] / housing_tr["households"]
-
-    housing_cat = housing[["ocean_proximity"]]
-    housing_prepared = housing_tr.join(pd.get_dummies(housing_cat, drop_first=True))
-    # Original code...
-
-    # Initialize MLflow
-    mlflow.set_tracking_uri("C:/Users/rishu.singh/Documents/mlflow")
-
-    mlflow.set_experiment("HousingModelTraining")
-
-    # Start MLflow run
-    with mlflow.start_run():
-        # Log parameters
-        mlflow.log_param("test_size", 0.2)
-        mlflow.log_param("random_state", 42)
-
-        # Log data source path
-        mlflow.log_param("data_path", data_path)
-
-        # Model training code
-        # Original code...
-        return housing_prepared, housing_labels, strat_test_set, imputer
+    mlflow.set_experiment(args.experiment_name)
+    with mlflow.start_run(run_id=args.run_id):
+        with mlflow.start_run(run_name="Train Model", nested=True):
+            mlflow.sklearn.autolog()
+            train_model(args.model_name, args.dataset_path, args.model_folder)
