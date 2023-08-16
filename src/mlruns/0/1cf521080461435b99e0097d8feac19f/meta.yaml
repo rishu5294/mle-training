@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/1cf521080461435b99e0097d8feac19f/artifacts
+end_time: 1690470895259
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 1cf521080461435b99e0097d8feac19f
+run_name: Housing Prediction Experiment
+run_uuid: 1cf521080461435b99e0097d8feac19f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1690470887567
+status: 3
+tags: []
+user_id: rishu_singh
